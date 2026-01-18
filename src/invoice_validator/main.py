@@ -1,13 +1,13 @@
-import json
 from pathlib import Path
 import warnings
 import gradio as gr
 from datetime import datetime
 import os
+import inspect
 from invoice_validator.crew import InvoiceValidator
-from invoice_validator.models.invoice_schema import ParsedInvoice
 from invoice_validator.utils.logger import setup_logger
 import traceback
+from invoice_validator.tools.document_loader import extract_raw_text
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 logger = setup_logger()
@@ -51,84 +51,71 @@ def detect_file_type(file_path):
     }
     return type_map.get(ext, 'Unknown')
 
+_RAW_CACHE = {}
+
 def process_invoice(file, progress=gr.Progress()):
-    """Main validation function"""
+    """Main validation function with REAL-TIME UPDATES"""
     global log_messages
     log_messages = []
     
     try:
         # Validation checks
         if file is None:
-            add_log("❌ ERROR: No file uploaded")
-            return "Please upload an invoice file first.", "\n".join(log_messages), ""
+            log_output = add_log("❌ ERROR: No file uploaded")
+            yield "Please upload an invoice file first.", log_output, {}
+            return
         
-        add_log("📁 File upload detected")
+        log_output = add_log("📁 File upload detected")
+        yield "", log_output, {}
         
         # Save file
         file_path = save_uploaded_file(file)
         file_type = detect_file_type(file_path)
         
-        add_log(f"📄 File saved: {os.path.basename(file_path)}")
-        add_log(f"🔍 File type detected: {file_type}")
+        log_output = add_log(f"📄 File saved: {os.path.basename(file_path)}")
+        yield "", log_output, {}
+        
+        log_output = add_log(f"🔍 File type detected: {file_type}")
+        yield "", log_output, {}
         
         # Check if file type is supported
         if file_type == 'Unknown':
-            add_log("❌ ERROR: Unsupported file format")
-            return "Unsupported file format. Please upload PDF, Image, JSON, or CSV.", "\n".join(log_messages), ""
-    
-        
-        # progress(0.2, desc="Parsing document...")
-        # add_log("📝 Document Parser Agent started")
-        
-        # progress(0.4, desc="Validating GST compliance...")
-        # add_log("✅ GST Validator Agent started")
-        
-        # progress(0.6, desc="Validating TDS compliance...")
-        # add_log("💰 TDS Validator Agent started")
-        
-        # progress(0.7, desc="Resolving ambiguities...")
-        # add_log("🔍 Ambiguity Resolver Agent started")
-        
-        # progress(0.8, desc="Generating report...")
-        # add_log("📊 Report Generator Agent started")
-        
-        # Run validation
-        result = crew.validate_invoice(file_path, file_type, progress, add_log)
-        
-        progress(0.9, desc="Finalizing report...")
-        add_log("✅ Validation completed successfully")
-        
-        # Save report
-        report_filename = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        report_path = os.path.join("outputs/reports", report_filename)
-        
-        with open(report_path, 'w') as f:
-            f.write(str(result))
-        
-        add_log(f"💾 Report saved: {report_filename}")
-        progress(1.0, desc="Done!")
+            log_output = add_log("❌ ERROR: Unsupported file format")
+            yield "Unsupported file format. Please upload PDF, Image, JSON, or CSV.", log_output, {}
+            return
 
-        report = format_report(result)
+        # Extract raw text
+        log_output = add_log("📝 Extracting text from document...")
+        yield "", log_output, {}
         
-        return report, "\n".join(log_messages)
+        if file_path in _RAW_CACHE:
+            data = _RAW_CACHE[file_path]
+        else:
+            data = extract_raw_text(file_path)
+            _RAW_CACHE[file_path] = data
+        
+        log_output = add_log("✅ Text extraction completed")
+        yield "", log_output, {}
+        
+        # Run validation with REAL-TIME STREAMING
+        progress(0.2, desc="Starting validation pipeline...")
+        log_output = add_log("🚀 Initializing CrewAI pipeline...")
+        yield "", log_output, {}
+        
+        # Stream results from crew
+        for update in crew.validate_invoice_streaming(data, progress, add_log):
+            report = update.get('report', '')
+            logs = update.get('logs', '')
+            json_data = update.get('json_data', {})
+            
+            # Yield real-time updates
+            yield report, logs, json_data
         
     except Exception as e:
         error_msg = f"❌ ERROR: {str(e)}\n\n{traceback.format_exc()}"
-        add_log(error_msg)
+        log_output = add_log(error_msg)
         logger.error(error_msg)
-        return f"Validation failed: {str(e)}", "\n".join(log_messages), ""
-
-def format_report(result: dict) -> str:
-    """Format the validation result into a readable report"""
-    
-
-    report = f"""
-# 🧾 INVOICE VALIDATION REPORT
-
-{result.get('raw', str(result))}
-
-"""
-    return report
+        yield f"Validation failed: {str(e)}", log_output, {}
 
 def create_gradio_interface():
     """Create the Gradio UI"""
@@ -154,7 +141,6 @@ def create_gradio_interface():
                 
                 gr.Markdown("""
                 **Supported Format:** PDF, Images (PNG/JPG/JPEG), JSON, CSV  
-                **Example fields:** invoice_id, vendor name, buyer name, line_items->hsn_sac, GST details
                 """)
                 validate_btn = gr.Button(
                     "🔍 Validate Invoice",
@@ -165,57 +151,34 @@ def create_gradio_interface():
                 gr.Markdown("---")
                 
                 gr.Markdown("### 📜 Agent Activity Logs")
+                gr.Markdown("*Updates in real-time as agents work*")
                 
                 log_output = gr.Textbox(
                     label="Real-time Progress & Errors",
                     lines=12,
                     interactive=False
                 )
+
+                gr.Markdown("---")
+
+                gr.Markdown("### 📦 Data Extraction (JSON)")
+                gr.Markdown("*Updates after parsing completes*")
+                json_display = gr.JSON(label="Parsed Invoice Data")
             
             # Right Column - Output
             with gr.Column(scale=2):
                 gr.Markdown("### 📊 Validation Report")
+                gr.Markdown("*Updates after all validation completes*")
                 
-                report_output = gr.Textbox(
-                    label="Compliance Analysis",
-                    lines=25,
-                    interactive=False,
-                    max_lines=50
+                report_output = gr.Markdown(
+                    label="Compliance Analysis"
                 )
-
-                # Examples & Info
-                
-                with gr.Accordion("📖 What Gets Validated", open=False):
-                    gr.Markdown("""
-                    ### GST Compliance Checks:
-                    - ✅ GSTIN format validation (15 characters, check digit)
-                    - ✅ HSN/SAC code presence and format
-                    - ✅ Tax rate validation (0%, 5%, 12%, 18%, 28%)
-                    - ✅ CGST/SGST vs IGST logic (interstate/intrastate)
-                    - ✅ Tax calculation accuracy
-                    - ✅ Mandatory field presence
-                    - ✅ Composition scheme violations
-                    - ✅ Suspended GSTIN detection
-                    
-                    ### TDS Compliance Checks:
-                    - ✅ TDS applicability (Section 194J for professional services)
-                    - ✅ Correct TDS rate (10% for 194J)
-                    - ✅ Threshold validation (₹30,000)
-                    - ✅ PAN requirement check
-                    
-                    ### Edge Cases Handled:
-                    - 🔍 Composition dealers charging GST (violation)
-                    - 🔍 Wrong tax rates for product categories
-                    - 🔍 Suspended/cancelled GSTIN usage
-                    - 🔍 Missing mandatory fields
-                    - 🔍 Incorrect interstate/intrastate tax application
-                    """)
         
-        # Event Handlers
+        # Event Handlers - Use streaming for real-time updates
         validate_btn.click(
             fn=process_invoice,
             inputs=[file_input],
-            outputs=[report_output, log_output]
+            outputs=[report_output, log_output, json_display]
         )
 
     return app
@@ -226,7 +189,7 @@ def main():
     print("📁 Creating necessary directories...")
     
     # Create directories
-    for dir_path in ["data/reports", "data/uploads"]:
+    for dir_path in ["data/reports", "data/uploads", "outputs/reports"]:
         Path(dir_path).mkdir(parents=True, exist_ok=True)
     
     # Launch Gradio

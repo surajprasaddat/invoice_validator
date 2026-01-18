@@ -1,30 +1,47 @@
 parse_task:
   description: >
-    Extract raw readable text from this invoice file.
-    File path: {file_path}
-    File type: {file_type}
-    Rules:
-    - Do not summarize
-    - Do not validate
-  expected_output: >
-    Plain raw invoice text
-  agent: document_parser
+    Use the RAW text and convert it into structured JSON.
 
-structuring_task:
-  description: >
-    Use the RAW text and convert to structured JSON format.
+    RAW text:
+    {invoice_raw_data}
 
-    CRITICAL: Output must be in this EXACT JSON structure:
+    CRITICAL RULES:
+    - Output ONLY valid JSON
+    - Do NOT add explanations
+    - Do NOT change field names
+    - Missing strings → null
+    - Missing numbers → 0
+
+    CONFIDENCE CALCULATION:
+    - confidence is an integer between 0 and 100
+    - Calculate confidence based on how many of the following fields are FOUND:
+
+      invoice_number
+      invoice_date
+      vendor.name
+      buyer.name
+      at least one line_items.hsn_sac
+      subtotal
+      total_amount
+      cgst_rate
+      sgst_rate
+      igst_rate
+
+    - If ALL above fields are found → confidence = 100
+    - If NONE are found → confidence = 0
+    - Otherwise → confidence = (found_fields / total_fields) * 100 (rounded)
+
+    OUTPUT JSON STRUCTURE (MUST MATCH EXACTLY):
 
     ```json
     {
       "invoice_number": "",
       "invoice_date": "",
       "vendor": {
-        "name": "",
+        "name": ""
       },
       "buyer": {
-        "name": "",
+        "name": ""
       },
       "line_items": [
         {
@@ -44,12 +61,115 @@ structuring_task:
       "igst_rate": 0,
       "igst_amount": 0,
       "total_tax": 0,
-      "total_amount": 0
+      "total_amount": 0,
+      "confidence": 0
     }
     ```
 
   expected_output: >
-    A perfectly formatted JSON object matching the exact structure shown below.
-    Use null or 0 for missing numeric values.
-    String fields can be null if not found.
+    A valid JSON object matching the exact schema, including confidence.
+
   agent: document_parser
+  context: []
+
+validator_task:
+  description: >
+    IMPORTANT: You have access to the 'invoice_validator' tool. You MUST use it to validate the invoice.
+
+    The previous task output contains the parsed invoice JSON. Pass this data to the invoice_validator tool.
+
+    Steps:
+    1. Extract the parsed_invoice from the previous task's output
+    2. Call the invoice_validator tool with the parsed_invoice data
+    3. Return the validation results from the tool
+
+    DO NOT perform manual validation. USE THE TOOL.
+
+    The tool will execute all checks in Category order (A → E):
+
+    Category A - Document Authenticity
+      - A1 Invoice number format validation
+      - A2 Duplicate invoice detection across vendors
+
+    Category B - GST Compliance
+      - B1 GSTIN format validation (15-character alphanumeric)
+      - B2 GSTIN active / suspended status verification
+
+    Category C - Arithmetic & Calculation Accuracy
+      - C1 Line item validation quantity X rate = amount
+      - C2 Subtotal equals sum of line item amounts
+
+    Category D - TDS Compliance
+      - D1 TDS applicability determination based on vendor nature
+      - D2 Correct TDS section identification (194C / 194J / 194H etc.)
+
+    Category E - Policy & Business Rules
+      - E1 Invoice amount within PO tolerance (±5%)
+      - E2 Invoice date within active contract period
+
+  expected_output: >
+    A valid JSON object returned by the invoice_validator tool with this structure:
+    {
+      "category_results": [
+        {
+          "category": "Category A - Document Authenticity",
+          "details": "A1 Invoice number format validation",
+          "status": "pass|fail",
+          "failures": [],
+          "confidence": 0
+        },
+        ...
+      ],
+      "overall_compliance_score": 0
+    }
+
+  agent: validator_agent
+  context: [parse_task]
+
+reporter_task:
+  description: >
+    Generate a comprehensive compliance report using:
+
+    1. Extracted Invoice Data from parse_task (source-of-truth)
+    2. Validation Results from validator_task (DO NOT revalidate)
+
+    CONDITIONAL LOGIC:
+    - If parse_task confidence < 70:
+      * Focus on DATA QUALITY issues
+      * List missing/unclear fields
+      * Recommend manual review or resubmission
+      * Skip detailed compliance analysis
+
+    - If parse_task confidence >= 70 AND validator_task ran:
+      * Use validation results as final authority
+      * Provide detailed compliance breakdown
+      * Highlight critical failures
+      * Include remediation steps
+
+    STRICT RULES:
+    - Do NOT restate raw invoice fields unless relevant
+    - Do NOT perform validation again
+    - Use validation_results as final authority
+    - Be concise and actionable
+
+    Report sections:
+    1. Executive Summary (2-3 sentences)
+    2. Data Quality Assessment (if confidence < 70)
+    3. Compliance Status Summary (if validated)
+       - Category-wise results
+       - Overall compliance score
+    4. Critical Issues (severity: high/medium/low)
+    5. Recommendations (specific, actionable)
+    6. Next Steps / Action Items
+    7. Risk Assessment (if applicable)
+
+  expected_output: >
+    A professional, well-structured compliance report in text format with:
+    - Clear sections
+    - Actionable insights
+    - Specific remediation steps
+    - Risk assessment
+    - Approval recommendations
+
+  agent: reporter_agent
+  context: [parse_task, validator_task]
