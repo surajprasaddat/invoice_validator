@@ -1,0 +1,44 @@
+{
+    "invoice_id": "INV-2024-0002",
+    "invoice_number": "GL/DEL/24-25/5678",
+    "invoice_date": "2024-09-20",
+    "vendor": {
+      "name": "Global Logistics & Transport Co.",
+      "gstin": "07AABCG5678H1Z9",
+      "pan": "AABCG5678H",
+      "address": "Plot 23, Industrial Area, Okhla Phase-II, New Delhi - 110020"
+    },
+    "buyer": {
+      "name": "FinanceGuard Solutions Private Limited",
+      "gstin": "27AABCF9999K1ZX",
+      "address": "Tower A, Mindspace, Goregaon East, Mumbai - 400063"
+    },
+    "line_items": [
+      {
+        "description": "Freight charges - Delhi to Mumbai",
+        "hsn_sac": "996511",
+        "quantity": 1,
+        "unit": "Shipment",
+        "rate": 45000,
+        "amount": 45000
+      }
+    ],
+    "subtotal": 45000,
+    "cgst_rate": 0,
+    "cgst_amount": 0,
+    "sgst_rate": 0,
+    "sgst_amount": 0,
+    "igst_rate": 5,
+    "igst_amount": 2250,
+    "total_tax": 2250,
+    "total_amount": 47250,
+    "irn": null,
+    "payment_terms": "Net 15",
+    "transport_mode": "Road",
+    "vehicle_number": "DL01AB1234",
+    "eway_bill": "331024567890",
+    "_test_category": "INTERSTATE_GTA",
+    "_expected_result": "PASS",
+    "_complexity": "MEDIUM",
+    "_notes": "GTA paying GST under forward charge. Check if TDS 194C applies - vendor has lower deduction cert."
+  }
