@@ -1,0 +1,55 @@
+parse_task:
+  description: >
+    Extract raw readable text from this invoice file.
+    File path: {file_path}
+    File type: {file_type}
+    Rules:
+    - Do not summarize
+    - Do not validate
+  expected_output: >
+    Plain raw invoice text
+  agent: document_parser
+
+structuring_task:
+  description: >
+    Use the RAW text and convert to structured JSON format.
+
+    CRITICAL: Output must be in this EXACT JSON structure:
+
+    ```json
+    {
+      "invoice_number": "",
+      "invoice_date": "",
+      "vendor": {
+        "name": "",
+      },
+      "buyer": {
+        "name": "",
+      },
+      "line_items": [
+        {
+          "description": "",
+          "hsn_sac": "",
+          "quantity": 0,
+          "unit": "",
+          "rate": 0,
+          "amount": 0
+        }
+      ],
+      "subtotal": 0,
+      "cgst_rate": 0,
+      "cgst_amount": 0,
+      "sgst_rate": 0,
+      "sgst_amount": 0,
+      "igst_rate": 0,
+      "igst_amount": 0,
+      "total_tax": 0,
+      "total_amount": 0
+    }
+    ```
+
+  expected_output: >
+    A perfectly formatted JSON object matching the exact structure shown below.
+    Use null or 0 for missing numeric values.
+    String fields can be null if not found.
+  agent: document_parser
