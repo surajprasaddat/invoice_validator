@@ -1,54 +1,52 @@
-# InvoiceValidator Crew
 
-Welcome to the InvoiceValidator Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+# Invoice Validator - Quick Start Guide
 
-## Installation
+This project validates invoices using OCR and AI models. Follow these steps to set up and run the project on your machine.
 
-Ensure you have Python >=3.10 <3.14 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) for dependency management and package handling, offering a seamless setup and execution experience.
+## 1. Install Tesseract for OCR
 
-First, if you haven't already, install uv:
+Download and install Tesseract OCR from the official documentation:
 
-```bash
-pip install uv
+[Tesseract Installation Guide](https://tesseract-ocr.github.io/tessdoc/Installation.html)
+
+https://github.com/tesseract-ocr/tesseract/releases/download/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe
+
+After installation, note the path to `tesseract.exe` (e.g., `C:\Users\<YourUsername>\AppData\Local\Programs\Tesseract-OCR\tesseract.exe`).
+
+## 2. Create a `.env` File
+
+In the project root directory, create a file named `.env` with the following content (replace `<YourUsername>` with your actual Windows username):
+
+```
+TESSERACT_PATH=C:\Users\<YourUsername>\AppData\Local\Programs\Tesseract-OCR\tesseract.exe
+MODEL=openrouter/openai/gpt-4o-mini
+OPENROUTER_API_KEY=sk-or-v1-56789
 ```
 
-Next, navigate to your project directory and install the dependencies:
+## 3. Install Python Dependencies
 
-(Optional) Lock the dependencies and install them by using the CLI command:
-```bash
-crewai install
+From the project root directory, run:
+
 ```
-### Customizing
-
-**Add your `OPENAI_API_KEY` into the `.env` file**
-
-- Modify `src/invoice_validator/config/agents.yaml` to define your agents
-- Modify `src/invoice_validator/config/tasks.yaml` to define your tasks
-- Modify `src/invoice_validator/crew.py` to add your own logic, tools and specific args
-- Modify `src/invoice_validator/main.py` to add custom inputs for your agents and tasks
-
-## Running the Project
-
-To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
-
-```bash
-$ crewai run
+uv sync
 ```
 
-This command initializes the invoice-validator Crew, assembling the agents and assigning them tasks as defined in your configuration.
+This will download and install all required Python dependencies.
 
-This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
+## 4. Run the Project
 
-## Understanding Your Crew
+To start the invoice validator, run the following command from the project root (replace `<YourUsername>` with your actual username):
 
-The invoice-validator Crew is composed of multiple AI agents, each with unique roles, goals, and tools. These agents collaborate on a series of tasks, defined in `config/tasks.yaml`, leveraging their collective skills to achieve complex objectives. The `config/agents.yaml` file outlines the capabilities and configurations of each agent in your crew.
+```
+uv run C:\Users\<YourUsername>\Desktop\invoice_validator\src\invoice_validator\main.py
+```
 
-## Support
+---
 
-For support, questions, or feedback regarding the InvoiceValidator Crew or crewAI.
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
+**Note:**
+- Always use your actual Windows username in the paths above.
+- Ensure Tesseract is installed and the path in `.env` is correct.
 
-Let's create wonders together with the power and simplicity of crewAI.
+---
+
+For further customization, configuration, or support, refer to the project documentation or contact the maintainer.
