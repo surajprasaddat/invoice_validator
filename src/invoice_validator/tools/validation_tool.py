@@ -87,7 +87,7 @@ class ValidationTool(BaseTool):
             "details": "A1 Invoice number format validation",
             "status": "pass" if inv_num_valid else "fail",
             "failures": [] if inv_num_valid else ["Invoice number missing or invalid"],
-            "confidence": 100 if inv_num_valid else 50
+            "confidence": 100 if inv_num_valid else 0
         })
         
         # A2 - Duplicate invoice detection (simplified - would need database in production)

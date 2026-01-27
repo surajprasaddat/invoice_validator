@@ -17,10 +17,11 @@ class InvoiceValidator():
     
     def __init__(self):
         self.logger = logger
+        model_name = os.environ.get("MODEL", "openrouter/openai/gpt-4o-mini")
         self.ollama_llm = LLM(
-            model="ollama/qwen2.5",
-            base_url="http://localhost:11434",
-            temperature=0
+            model=model_name,
+            temperature=0,
+            max_tokens=2048
         )
         self.validation_tool = ValidationTool()
         self.current_update = {

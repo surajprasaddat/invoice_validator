@@ -19,7 +19,9 @@ parse_task:
       invoice_number
       invoice_date
       vendor.name
+      vendor.gstin
       buyer.name
+      buyer.gstin
       at least one line_items.hsn_sac
       subtotal
       total_amount
@@ -38,10 +40,12 @@ parse_task:
       "invoice_number": "",
       "invoice_date": "",
       "vendor": {
-        "name": ""
+        "name": "",
+        "gstin": ""
       },
       "buyer": {
-        "name": ""
+        "name": "",
+        "gstin": ""
       },
       "line_items": [
         {

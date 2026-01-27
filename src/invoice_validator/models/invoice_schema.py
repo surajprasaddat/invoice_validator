@@ -4,11 +4,11 @@ from typing import List, Optional
 
 class Vendor(BaseModel):
     name: Optional[str] = None
-
+    gstin: Optional[str] = None
 
 class Buyer(BaseModel):
     name: Optional[str] = None
-
+    gstin: Optional[str] = None
 
 class LineItem(BaseModel):
     description: Optional[str] = None
